@@ -14,8 +14,17 @@
                 "clean": "rm -rf dist",
                 "build": "npm run clean && tsc",
                 "copy-files": "cpy 'src/docs/**' dist/src/docs --parents",
-                "postbuild": "npm run copy-files"
+                "postbuild": "npm run copy-files",
+                "ts.check": "tsc --project tsconfig.json",
+                "add-build": "git add dist",
+                "postinstall": "prisma generate",
+                "secret": "ts-node ./src/secret.ts"
         },
+        "pre-commit": [
+                "ts.check",
+                "build",
+                "add-build"
+        ],
         "keywords": [],
         "author": "",
         "license": "ISC",
