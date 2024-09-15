@@ -1,0 +1,1240 @@
+openapi: 3.0.2
+info:
+  title: Paysera Timekeeping API
+  version: 1.0.0
+  description: A simple API
+servers:
+  - url: https://192.168.3.55:8080/
+    description: Default Local host server for https
+  - url: https://192.168.3.55:8080/
+    description: Default Local host server for http
+paths:
+  /login:
+    post:
+      tags:
+        - Authentication
+      summary: User login
+      description: Authenticates a user with a username and password, and returns a JWT token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                  example: "username123W"
+                  description: "Username of the user"
+                password:
+                  type: string
+                  example: "password123"
+                  description: "Password of the user"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Login successful"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Invalid input"
+        "404":
+          description: Invalid username or password
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Invalid username or password"
+  /logout:
+    post:
+      tags:
+        - Authentication
+      summary: User logout
+      description: Logs out a user by clearing the JWT token from cookies.
+      responses:
+        "200":
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Logout successful"
+
+  /info:
+    get:
+      tags:
+        - Authentication
+      summary: Get information from token
+      responses:
+        "200":
+          description: Token information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Employee"
+        "401":
+          description: Missing token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Missing token"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Invalid input"
+        "404":
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Account not found"
+  # employee route
+  /api/employee/admin:
+    get:
+      summary: Returns a list of employee accessLevel ADMIN
+      tags:
+        - Employee
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmployeeAssignment"
+                type: array
+                items:
+                  $ref: "#/components/schemas/Employee"
+
+  /api/employee/team-leader:
+    get:
+      summary: Returns a list of accessLevel TEAM_LEADER
+      tags:
+        - Employee
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Employee"
+
+  "/api/employee/only-employee":
+    get:
+      summary: Returns a list of employee accessLevel EMPLOYEE
+      tags:
+        - Employee
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Employee"
+
+  /api/employee:
+    get:
+      summary: Returns a list of employees
+      tags:
+        - Employee
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Employee"
+    post:
+      summary: Creates a new employee
+      tags:
+        - Employee
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmployeeCreate"
+      responses:
+        "201":
+          description: Employee created successfully
+        "400":
+          description: Invalid request body or username already exists
+        "500":
+          description: Error creating employee
+  "/api/employee/{id}":
+    get:
+      summary: Returns a specific employee by id
+      tags:
+        - Employee
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Employee"
+        "404":
+          description: Employee not found
+    put:
+      summary: Updates a specific employee
+      tags:
+        - Employee
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Employee"
+      responses:
+        "200":
+          description: Success
+    delete:
+      summary: Deletes a specific employee
+      tags:
+        - Employee
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: No Content
+  /api/department:
+    get:
+      summary: Get all departments
+      tags:
+        - Departments
+      responses:
+        "200":
+          description: A list of departments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Department"
+    post:
+      summary: Create a new department
+      tags:
+        - Departments
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DepartmentInput"
+      responses:
+        "201":
+          description: Department created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Department"
+
+  /api/department/{id}:
+    get:
+      summary: Get department by ID
+      tags:
+        - Departments
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Department details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Department"
+    put:
+      summary: Update department by ID
+      tags:
+        - Departments
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DepartmentInput"
+      responses:
+        "200":
+          description: Department updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Department"
+    delete:
+      summary: Delete department by ID
+      tags:
+        - Departments
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Department deleted successfully
+  /api/department/{id}/employee:
+    get:
+      summary: Get employees in a department by ID
+      tags:
+        - Departments
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Employee details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Employee"
+    put:
+      summary: Add an employee to a department
+      tags:
+        - Departments
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+      responses:
+        "200":
+          description: Employee added successfully
+    delete:
+      summary: Remove an employee from a department
+      tags:
+        - Departments
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+      responses:
+        "204":
+          description: Employee removed successfully
+  /api/department/{id}/schedules:
+    get:
+      summary: Get schedules for a department
+      tags:
+        - Departments
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: A list of schedules for the department
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DepartmentSchedule"
+  /api/department/{id}/attendance:
+    get:
+      summary: Get attendance records for a department
+      tags:
+        - Departments
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: A list of attendance records for the department
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Attendance"
+  /api/department/{id}/leader:
+    get:
+      summary: Get leader of a department
+      tags:
+        - Departments
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                employeeId:
+                  type: integer
+      responses:
+        "200":
+          description: Leader details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Employee"
+    put:
+      summary: Assign a leader to a department
+      tags:
+        - Departments
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                employeeId:
+                  type: integer
+      responses:
+        "200":
+          description: Leader assigned successfully
+    delete:
+      summary: Remove a leader from a department
+      tags:
+        - Departments
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Leader removed successfully in a department
+  /api/department-schedule:
+    get:
+      summary: Get all department schedules
+      tags:
+        - Department Schedules
+      responses:
+        "200":
+          description: List of department schedules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DepartmentSchedule"
+        "404":
+          description: No department schedules found
+    post:
+      summary: Create a new department schedule
+      tags:
+        - Department Schedules
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDepartmentSchedule"
+      responses:
+        "201":
+          description: Department schedule created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DepartmentSchedule"
+        "404":
+          description: Department not found
+
+  /api/department-schedule/{id}:
+    get:
+      summary: Get department schedule by ID
+      tags:
+        - Department Schedules
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Department schedule ID
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Department schedule found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DepartmentSchedule"
+        "400":
+          description: Invalid department schedule ID
+        "404":
+          description: Department schedule not found
+
+    put:
+      summary: Update department schedule by ID
+      tags:
+        - Department Schedules
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Department schedule ID
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDepartmentSchedule"
+      responses:
+        "201":
+          description: Department schedule updated successfully
+        "400":
+          description: Invalid department schedule ID
+        "404":
+          description: Department schedule not found
+    delete:
+      summary: Delete department schedule by ID
+      tags:
+        - Department Schedules
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Department schedule ID
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Department schedule removed successfully
+        "400":
+          description: Invalid department schedule ID
+        "404":
+          description: Department schedule not found
+  /api/attendance:
+    get:
+      summary: Get all attendance records
+      tags:
+        - Attendance
+      responses:
+        "200":
+          description: List of all attendance records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Attendance"
+        "404":
+          description: No attendance records found
+    post:
+      summary: Create an attendance record
+      tags:
+        - Attendance
+      requestBody:
+        description: Attendance details to create
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AttendanceCreate"
+      responses:
+        "201":
+          description: Attendance record created successfully
+        "404":
+          description: Employee not found
+        "400":
+          description: Attendance record already exists
+
+  /api/attendance/{id}:
+    get:
+      summary: Get an attendance record by ID
+      tags:
+        - Attendance
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Attendance record ID
+      responses:
+        "200":
+          description: Attendance record found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Attendance"
+        "400":
+          description: Invalid attendance ID
+        "404":
+          description: Attendance record not found
+    put:
+      summary: Update an attendance record
+      tags:
+        - Attendance
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Attendance record ID
+      requestBody:
+        description: Attendance details to update
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AttendanceUpdate"
+      responses:
+        "200":
+          description: Attendance record updated successfully
+        "404":
+          description: Attendance record not found
+    delete:
+      summary: Delete an attendance record
+      tags:
+        - Attendance
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Attendance record ID
+      responses:
+        "200":
+          description: Attendance record deleted successfully
+        "404":
+          description: Attendance record not found
+
+  /api/attendance/employee/{id}:
+    get:
+      summary: Get attendance records by employee ID
+      tags:
+        - Attendance
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Employee ID
+      responses:
+        "200":
+          description: Attendance records found for the employee
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Attendance"
+        "404":
+          description: No attendance records found for this employee
+    put:
+      summary: Update attendance records by employee ID
+      tags:
+        - Attendance
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Employee ID
+      requestBody:
+        description: Attendance details to update
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AttendanceUpdate"
+      responses:
+        "200":
+          description: Attendance record updated successfully
+        "404":
+          description: Attendance record not found
+  /api/attendance/time-in:
+    post:
+      tags:
+        - Attendance
+      summary: Clock in an employee
+      description: Registers the employee's time-in and creates an attendance record.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                employeeId:
+                  type: integer
+                  example: 1
+                timeIn:
+                  type: string
+                  format: date-time
+                  example: "2024-09-15T09:00:00Z"
+      responses:
+        "201":
+          description: Attendance record created successfully.
+        "400":
+          description: Invalid input or employee already clocked in.
+        "404":
+          description: Employee not found.
+
+  /api/attendance/time-out:
+    post:
+      tags:
+        - Attendance
+      summary: Clock out an employee
+      description: Registers the employee's time-out and updates the attendance record.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                employeeId:
+                  type: integer
+                  example: 1
+                timeOut:
+                  type: string
+                  format: date-time
+                  example: "2024-09-15T18:00:00Z"
+      responses:
+        "200":
+          description: Attendance updated successfully.
+        "400":
+          description: Invalid input or attendance record issue.
+        "404":
+          description: Employee not found.
+
+  /api/attendance/lunch-in:
+    post:
+      tags:
+        - Attendance
+      summary: Start lunch break
+      description: Registers the employee's lunch-in time and updates the attendance record.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                employeeId:
+                  type: integer
+                  example: 1
+                lunchTimeIn:
+                  type: string
+                  format: date-time
+                  example: "2024-09-15T12:00:00Z"
+      responses:
+        "200":
+          description: Lunch time in recorded successfully.
+        "400":
+          description: Invalid input or lunch already started.
+        "404":
+          description: Employee not found or attendance record missing.
+
+  /api/attendance/lunch-out:
+    post:
+      tags:
+        - Attendance
+      summary: End lunch break
+      description: Registers the employee's lunch-out time and updates the attendance record.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                employeeId:
+                  type: integer
+                  example: 1
+                lunchTimeOut:
+                  type: string
+                  format: date-time
+                  example: "2024-09-15T12:30:00Z"
+      responses:
+        "200":
+          description: Lunch time out recorded successfully.
+        "400":
+          description: Invalid input or lunch not started yet.
+        "404":
+          description: Employee not found or attendance record missing.
+
+# END OF ROUTES
+components:
+  schemas:
+    Attendance:
+      type: object
+      properties:
+        id:
+          type: integer
+        employeeId:
+          type: integer
+        date:
+          type: string
+          format: date-time
+        status:
+          $ref: "#/components/schemas/AttendanceStatus"
+        timeIn:
+          type: string
+          format: date-time
+        timeOut:
+          type: string
+          format: date-time
+        timeHoursWorked:
+          type: number
+        overTimeTotal:
+          type: number
+        timeTotal:
+          type: number
+        lunchTimeIn:
+          type: string
+          format: date-time
+        lunchTimeOut:
+          type: string
+          format: date-time
+        lunchTimeTotal:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        employee:
+          $ref: "#/components/schemas/Employee"
+    Schedule:
+      type: object
+      properties:
+        id:
+          type: integer
+        description:
+          type: string
+        scheduleType:
+          $ref: "#/components/schemas/ScheduleType"
+        fixedStartTime:
+          type: string
+          format: date-time
+        fixedEndTime:
+          type: string
+          format: date-time
+        flexStartTime:
+          type: string
+          format: date-time
+        flexEndTime:
+          type: string
+          format: date-time
+        limitWorkHoursDay:
+          type: number
+        allowedOvertime:
+          type: boolean
+        lunchStartTime:
+          type: string
+          format: date-time
+        lunchEndTime:
+          type: string
+          format: date-time
+        isDepartmentSchedule:
+          type: boolean
+        isTemplateBased:
+          type: boolean
+        updatedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+    DepartmentSchedule:
+      type: object
+      properties:
+        id:
+          type: integer
+        scheduleId:
+          type: integer
+        name:
+          type: string
+          example: "IT Department Schedule AM"
+        departmentId:
+          type: integer
+        Schedule:
+          $ref: "#/components/schemas/Schedule"
+        updatedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+    SoloSchedule:
+      type: object
+      properties:
+        id:
+          type: integer
+        employeeId:
+          type: integer
+        Employee:
+          $ref: "#/components/schemas/Employee"
+        scheduleId:
+          type: integer
+        Schedule:
+          $ref: "#/components/schemas/Schedule"
+        updatedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+    EmployeeCreate:
+      type: object
+      properties:
+        id:
+          type: integer
+        accessLevel:
+          $ref: "#/components/schemas/AccessLevel"
+        isActive:
+          type: boolean
+        username:
+          type: string
+        passwordCredentials:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        middleName:
+          type: string
+        role:
+          type: string
+        departmentId:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    Employee:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        accessLevel:
+          $ref: "#/components/schemas/AccessLevel"
+          example: "EMPLOYEE"
+        departmentId:
+          type: integer
+          example: 1
+        isActive:
+          type: boolean
+          example: false
+        username:
+          type: string
+          example: "pangilinan2002"
+        firstName:
+          type: string
+          example: "Ervin"
+        lastName:
+          type: string
+          example: "Pangilinan"
+        middleName:
+          type: string
+          example: "Capili"
+        role:
+          type: string
+          example: "Software Engineer"
+    Department:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        leaderId:
+          type: integer
+        Leader:
+          $ref: "#/components/schemas/Employee"
+        DepartmentSchedule:
+          type: array
+          items:
+            $ref: "#/components/schemas/DepartmentSchedule"
+        Employees:
+          type: array
+          items:
+            $ref: "#/components/schemas/Employee"
+        updatedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+    DepartmentInput:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "IT Department"
+        description:
+          type: string
+          example: "Handles all tech-related tasks"
+        leaderId:
+          type: integer
+          example: 1
+    EmployeeAssignment:
+      type: object
+      properties:
+        employeeId:
+          type: integer
+        role:
+          type: string
+          example: "Programmer"
+
+    CreateDepartmentSchedule:
+      type: object
+      properties:
+        role:
+          type: string
+          example: EMPLOYEE
+        departmentId:
+          type: integer
+          example: 1
+        scheduleType:
+          type: string
+          example: FIXED
+        startTime:
+          type: string
+          format: date-time
+          example: 2024-09-06T09:00:00Z
+        endTime:
+          type: string
+          format: date-time
+          example: 2024-09-06T18:00:00Z
+        limitWorkHoursDay:
+          type: number
+          example: 8
+        allowedOvertime:
+          type: boolean
+          example: false
+        lunchStartTime:
+          type: string
+          format: date-time
+          example: 2024-09-06T12:00:00Z
+        lunchEndTime:
+          type: string
+          format: date-time
+          example: 2024-09-06T13:00:00Z
+
+    UpdateDepartmentSchedule:
+      type: object
+      properties:
+        role:
+          type: string
+          example: EMPLOYEE
+        scheduleType:
+          type: string
+          example: FIXED
+        startTime:
+          type: string
+          format: date-time
+          example: 2024-09-06T09:00:00Z
+        endTime:
+          type: string
+          format: date-time
+          example: 2024-09-06T18:00:00Z
+        limitWorkHoursDay:
+          type: number
+          example: 8
+        allowedOvertime:
+          type: boolean
+          example: false
+        lunchStartTime:
+          type: string
+          format: date-time
+          example: 2024-09-06T12:00:00Z
+        lunchEndTime:
+          type: string
+          format: date-time
+          example: 2024-09-06T13:00:00Z
+
+    AttendanceCreate:
+      type: object
+      properties:
+        employeeId:
+          type: integer
+        date:
+          type: string
+          format: date
+        status:
+          type: string
+        scheduleType:
+          type: string
+        timeIn:
+          type: string
+          format: date-time
+        timeOut:
+          type: string
+          format: date-time
+        lunchTimeIn:
+          type: string
+          format: date-time
+        lunchTimeOut:
+          type: string
+          format: date-time
+        overtimeTotal:
+          type: number
+
+    AttendanceUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+        scheduleType:
+          type: string
+        timeIn:
+          type: string
+          format: date-time
+        timeOut:
+          type: string
+          format: date-time
+        lunchTimeIn:
+          type: string
+          format: date-time
+        lunchTimeOut:
+          type: string
+          format: date-time
+        overtimeTotal:
+          type: number
+    AccessLevel:
+      type: string
+      enum:
+        - ADMIN
+        - TEAM_LEADER
+        - EMPLOYEE
+
+    ScheduleType:
+      type: string
+      enum:
+        - FIXED
+        - SUPER_FLEXI
+        - FLEXI
+
+    Day:
+      type: string
+      enum:
+        - MONDAY
+        - TUESDAY
+        - WEDNESDAY
+        - THURSDAY
+        - FRIDAY
+        - SATURDAY
+        - SUNDAY
+
+    AttendanceStatus:
+      type: string
+      enum:
+        - BREAK
+        - DONE
+        - UNPAID_LEAVE
+        - PAID_TIME_OFF
+        - ONGOING

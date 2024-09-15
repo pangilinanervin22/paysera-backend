@@ -1,0 +1,108 @@
+//// ------------------------------------------------------
+//// THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+//// ------------------------------------------------------
+
+Table Attendance {
+  id Int [pk, increment]
+  employeeId Int [not null]
+  date String [not null]
+  status AttendanceStatus [not null, default: 'ONGOING']
+  scheduleType ScheduleType [not null]
+  timeIn DateTime [default: `now()`, not null]
+  timeOut DateTime
+  timeHoursWorked Float
+  overTimeTotal Float
+  timeTotal Float
+  lunchTimeIn DateTime
+  lunchTimeOut DateTime
+  lunchTimeTotal Float
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Table Schedule {
+  id Int [pk, increment]
+  scheduleType ScheduleType [not null, default: 'FIXED']
+  startTime DateTime [not null]
+  endTime DateTime [not null]
+  limitWorkHoursDay Float
+  allowedOvertime Boolean [default: false]
+  lunchStartTime DateTime
+  lunchEndTime DateTime
+  lunchTimeTotal Float
+  updatedAt DateTime [not null]
+  createdAt DateTime [default: `now()`, not null]
+}
+
+Table DepartmentSchedule {
+  id Int [pk, increment]
+  name String [default: 'Department Schedule']
+  role String [not null, default: 'EMPLOYEE']
+  scheduleId Int [unique, not null]
+  departmentId Int [not null]
+  updatedAt DateTime [not null]
+  createdAt DateTime [default: `now()`, not null]
+}
+
+Table Employee {
+  id Int [pk, increment]
+  username String [unique, not null]
+  accessLevel AccessLevel [not null]
+  isActive Boolean [not null, default: false]
+  passwordCredentials String [not null]
+  firstName String [not null]
+  lastName String [not null]
+  middleName String
+  role String [default: 'EMPLOYEE']
+  departmentId Int
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Table Department {
+  id Int [pk, increment]
+  name String [not null]
+  leaderId Int [unique]
+  updatedAt DateTime [not null]
+  createdAt DateTime [default: `now()`, not null]
+}
+
+Enum AccessLevel {
+  ADMIN
+  TEAM_LEADER
+  EMPLOYEE
+}
+
+Enum ScheduleType {
+  FIXED
+  SUPER_FLEXI
+  FLEXI
+}
+
+Enum Day {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+Enum AttendanceStatus {
+  BREAK
+  DONE
+  UNPAID_LEAVE
+  PAID_LEAVE
+  ONGOING
+}
+
+Ref: Attendance.employeeId > Employee.id [delete: Cascade]
+
+Ref: DepartmentSchedule.scheduleId - Schedule.id [delete: Cascade]
+
+Ref: DepartmentSchedule.departmentId > Department.id [delete: Cascade]
+
+Ref: Employee.departmentId - Department.id [delete: Set Null]
+
+Ref: Department.leaderId - Employee.id [delete: Set Null]

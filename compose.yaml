@@ -1,0 +1,35 @@
+version: "3.9" # Specify the Docker Compose version
+
+services:
+        db:
+                image: postgres:14
+                environment:
+                        POSTGRES_USER: postgres
+                        POSTGRES_PASSWORD: password
+                        POSTGRES_DB: sample
+                ports:
+                        - "5432:5432" # Default port for PostgreSQL
+                volumes:
+                        - postgres-data:/var/lib/postgresql/data
+
+        app:
+                image: pangilinanervin22/paysera-backend
+                build: .
+                ports:
+                        - "${PORT}:${PORT}"
+                env_file:
+                        - .env # or specify the correct environment file here
+                environment:
+                        DATABASE_URL: ${DATABASE_URL}
+                        PORT: ${PORT}
+                        NODE_ENV: "production" # or "development"
+                        ENABLE_DEV_GENERATORS: "false" # or "false"
+                        JWT_SECRET: ${JWT_SECRET}
+                depends_on:
+                        - db
+                command: sh -c "npx prisma migrate deploy && node ./dist/src/index.js"
+                # Ensure you remove volumes that might override your app files
+                # If you need live reloading, you can use a different approach for development.
+
+volumes:
+        postgres-data:

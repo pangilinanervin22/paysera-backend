@@ -1,0 +1,152 @@
+generator Client {
+  provider = "prisma-client-js"
+}
+
+datasource Db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator dbml {
+  provider              = "prisma-dbml-generator"
+  includeRelationFields = "false"
+}
+
+model Attendance {
+  id              Int              @id @default(autoincrement())
+  employeeId      Int
+  employee        Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  date            String
+  status          AttendanceStatus @default(ONGOING)
+  scheduleType    ScheduleType
+  timeIn          DateTime         @default(now()) @Db.Timestamptz()
+  timeOut         DateTime?
+  timeHoursWorked Float?
+  overTimeTotal   Float?
+  timeTotal       Float?
+  lunchTimeIn     DateTime?
+  lunchTimeOut    DateTime?
+  lunchTimeTotal  Float?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([date])
+  @@index([employeeId, date])
+  @@map("Attendance")
+}
+
+model Schedule {
+  id           Int          @id @default(autoincrement())
+  scheduleType ScheduleType @default(FIXED) // Type of schedule (FIXED, SUPER_FLEXI, FLEXI)
+
+  // Fixed schedule fields
+  startTime DateTime
+  endTime   DateTime
+
+  // Flexi schedule fields
+  limitWorkHoursDay Float? // Applies to FLEXI only
+
+  // Super Flexi schedule fields
+  allowedOvertime Boolean? @default(false)
+
+  lunchStartTime DateTime?
+  lunchEndTime   DateTime?
+  lunchTimeTotal Float?
+
+  // Relationships
+  DepartmentSchedule DepartmentSchedule?
+
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@index([startTime, endTime])
+  @@map("Schedule")
+}
+
+model DepartmentSchedule {
+  id   Int     @id @default(autoincrement())
+  name String? @default("Department Schedule") @Db.VarChar(100)
+  role String  @default("EMPLOYEE") @Db.VarChar(50) // Use this to denote job function like "PROGRAMMER", "DESIGNER"
+
+  // Relationships
+  scheduleId   Int        @unique
+  Schedule     Schedule   @relation(fields: [scheduleId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  departmentId Int
+  Department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@index([departmentId, scheduleId, role])
+  @@map("DepartmentSchedule")
+}
+
+model Employee {
+  id                  Int         @id @default(autoincrement())
+  username            String      @unique
+  accessLevel         AccessLevel
+  isActive            Boolean     @default(false)
+  passwordCredentials String      @Db.Text
+  firstName           String      @Db.VarChar(50)
+  lastName            String      @Db.VarChar(50)
+  middleName          String?     @Db.VarChar(50)
+  role                String?     @default("EMPLOYEE") @Db.VarChar(50) // Use this to denote job function like "PROGRAMMER", "DESIGNER"
+
+  // Relations 
+  departmentId    Int?
+  Department      Department? @relation("DepartmentEmployees", fields: [departmentId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  LeadsDepartment Department? @relation("DepartmentLeader")
+
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  Attendance Attendance[]
+
+  @@index([accessLevel])
+  @@index([departmentId, role])
+  @@map("Employee")
+}
+
+model Department {
+  id                 Int                  @id @default(autoincrement())
+  name               String               @Db.VarChar(100)
+  // Relations
+  leaderId           Int?                 @unique
+  Leader             Employee?            @relation("DepartmentLeader", fields: [leaderId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  DepartmentSchedule DepartmentSchedule[]
+  Employees          Employee[]           @relation("DepartmentEmployees")
+
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@map("Department")
+}
+
+enum AccessLevel {
+  ADMIN
+  TEAM_LEADER
+  EMPLOYEE
+}
+
+enum ScheduleType {
+  FIXED
+  SUPER_FLEXI
+  FLEXI
+}
+
+enum Day {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+enum AttendanceStatus {
+  BREAK
+  DONE
+  UNPAID_LEAVE
+  PAID_LEAVE
+  ONGOING
+}

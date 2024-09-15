@@ -1,0 +1,27 @@
+{
+        "compilerOptions": {
+                "baseUrl": ".",
+                "outDir": "./dist/src",
+                "rootDir": "./src",
+                "strict": true,
+                "esModuleInterop": true,
+                "moduleResolution": "Node",
+                "resolveJsonModule": true,
+                "target": "ES6",
+                "module": "CommonJS",
+                "skipLibCheck": true,
+                "allowSyntheticDefaultImports": true
+        },
+        "include": ["src/**/*", "/src/tests/**/*"],
+        "exclude": [
+                "node_modules",
+                "tests",
+                "*.test.ts",
+                "*.spec.ts",
+                "coverage",
+                "*.map",
+                "build",
+                "*.log",
+                ".env"
+        ]
+}
