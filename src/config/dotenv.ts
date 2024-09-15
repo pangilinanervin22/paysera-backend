@@ -14,6 +14,7 @@ const envSchema = z.object({
     ENABLE_DEV_GENERATORS: z.enum(['true', 'false']),
     JWT_SECRET: z.string(),
     ORIGIN: z.string().url(),
+    SALT_ROUNDS: z.string().regex(/^\d+$/).transform(Number),
 });
 
 // Parse and validate the environment variables
