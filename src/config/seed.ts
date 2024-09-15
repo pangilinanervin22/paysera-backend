@@ -1,6 +1,7 @@
 import { formatDate } from "../utils/time";
 import { prisma } from "./database";
 import bcrypt from 'bcryptjs';
+import { configEnv } from "./dotenv";
 
 export const seedDatabase = async () => {
     // Clean up the database first
@@ -21,7 +22,7 @@ export const seedDatabase = async () => {
             },
         });
 
-        const hashPasswordA = await bcrypt.hash('ADMIN12345', 10);
+        const hashPasswordA = await bcrypt.hash('ADMIN12345', configEnv.SALT_ROUNDS);
         const admin1 = await prisma.employee.create({
             data: {
                 username: 'ADMIN12345',
@@ -31,11 +32,11 @@ export const seedDatabase = async () => {
                 firstName: 'Ervin',
                 lastName: 'Pangilinan',
                 middleName: 'Capili',
-                role: 'Developer',
+                role: 'DEVELOPER',
             },
         });
 
-        const hashPasswordL = await bcrypt.hash('TEAM_LEADER12345', 10);
+        const hashPasswordL = await bcrypt.hash('TEAM_LEADER12345', configEnv.SALT_ROUNDS);
 
         const leader1 = await prisma.employee.create({
             data: {
@@ -46,7 +47,7 @@ export const seedDatabase = async () => {
                 firstName: 'Leader1',
                 lastName: 'Leader1',
                 middleName: 'Leader1',
-                role: 'HR Manager',
+                role: 'HR MANAGER',
                 departmentId: department1.id,
                 LeadsDepartment: {
                     connect: {
@@ -65,7 +66,7 @@ export const seedDatabase = async () => {
                 firstName: 'leader2',
                 lastName: 'leader2',
                 middleName: 'leader2',
-                role: 'HR Manager',
+                role: 'HR MANAGER',
                 Department: {
                     connect: {
                         id: department2.id,
@@ -79,7 +80,7 @@ export const seedDatabase = async () => {
             },
         });
 
-        const hashPasswordE = await bcrypt.hash('EMPLOYEE12345', 10);
+        const hashPasswordE = await bcrypt.hash('EMPLOYEE12345', configEnv.SALT_ROUNDS);
         // Create Employees
         const employee1 = await prisma.employee.create({
             data: {
@@ -90,7 +91,7 @@ export const seedDatabase = async () => {
                 firstName: 'employee1 ',
                 lastName: 'employee1 ',
                 middleName: 'employee1 ',
-                role: 'Engineer',
+                role: 'ENGINE',
                 departmentId: department1.id,
             },
         });
@@ -104,7 +105,7 @@ export const seedDatabase = async () => {
                 firstName: 'employee2',
                 lastName: 'employee2',
                 middleName: 'employee2',
-                role: 'Designer',
+                role: 'DESIGNER',
                 Department: {
                     connect: {
                         id: department2.id,
@@ -122,7 +123,7 @@ export const seedDatabase = async () => {
                 firstName: 'employee3',
                 lastName: 'employee3',
                 middleName: 'employee3',
-                role: 'Engineer',
+                role: 'ENGINE',
                 departmentId: department1.id,
             },
         });
@@ -136,7 +137,7 @@ export const seedDatabase = async () => {
                 firstName: 'employee4',
                 lastName: 'employee4',
                 middleName: 'employee4',
-                role: 'Designer',
+                role: 'DESIGNER',
                 Department: {
                     connect: {
                         id: department2.id,
@@ -154,7 +155,7 @@ export const seedDatabase = async () => {
                 firstName: 'employee5',
                 lastName: 'employee5',
                 middleName: 'employee5',
-                role: 'Engineer',
+                role: 'ENGINE',
                 departmentId: department1.id,
             },
         });
@@ -186,7 +187,7 @@ export const seedDatabase = async () => {
                 firstName: 'employee7',
                 lastName: 'employee7',
                 middleName: 'employee7',
-                role: 'Engineer',
+                role: 'ENGINE',
                 departmentId: department1.id,
             },
         });
