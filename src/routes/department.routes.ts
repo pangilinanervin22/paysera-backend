@@ -10,20 +10,20 @@ const routerDepartment = express.Router();
 routerDepartment
     .route('/')
     .get(asyncHandler(departmentController.getAllDepartments))
-    .post(asyncHandler(departmentController.createDepartment));
+    .post(adminMiddleware, asyncHandler(departmentController.createDepartment));
 
 routerDepartment
     .route('/:id')
     .get(asyncHandler(departmentController.getDepartmentById))
-    .put(asyncHandler(departmentController.updateDepartmentById))
-    .delete(asyncHandler(departmentController.deleteDepartmentById));
+    .put(adminMiddleware, asyncHandler(departmentController.updateDepartmentById))
+    .delete(adminMiddleware, asyncHandler(departmentController.deleteDepartmentById));
 
 routerDepartment
     .route('/:id/schedules')
     .get(asyncHandler(departmentController.getDepartmentSchedules));
 
 routerDepartment
-    .route('/:id/schedules/today')
+    .route('/:id/schedules/today',)
     .get(asyncHandler(departmentController.getDepartmentSchedulesToday));
 
 routerDepartment
@@ -37,13 +37,13 @@ routerDepartment
 routerDepartment
     .route('/:id/leader')
     .get(asyncHandler(departmentController.getDepartmentLeader))
-    .put(asyncHandler(departmentController.updateDepartmentAssignLeader))
-    .delete(asyncHandler(departmentController.updateDepartmentRemoveLeader));
+    .put(adminMiddleware, asyncHandler(departmentController.updateDepartmentAssignLeader))
+    .delete(adminMiddleware, asyncHandler(departmentController.updateDepartmentRemoveLeader));
 
 routerDepartment
     .route('/:id/employee')
     .get(asyncHandler(departmentController.getDepartmentEmployees))
-    .put(asyncHandler(departmentController.updateDepartmentAssignEmployee))
-    .delete(asyncHandler(departmentController.updateDepartmentRemoveEmployee));
+    .put(teamLeaderMiddleware, asyncHandler(departmentController.updateDepartmentAssignEmployee))
+    .delete(teamLeaderMiddleware, asyncHandler(departmentController.updateDepartmentRemoveEmployee));
 
 export default routerDepartment;

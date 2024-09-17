@@ -10,7 +10,6 @@ routerAuth.post('/login', asyncHandler(login)); //user login
 routerAuth.post('/logout', asyncHandler(logout)); //user logout
 routerAuth.get('/info', asyncHandler(getUserInfo)); //user logout
 
-
 routerAuth.get('/protected', regularMiddleware, (req, res) => {
     res.send('success');
 });
