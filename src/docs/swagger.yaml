@@ -763,7 +763,7 @@ paths:
                 employeeId:
                   type: integer
                   example: 1
-                timeIn:
+                timeStamp:
                   type: string
                   format: date-time
                   example: "2024-09-15T09:00:00Z"
@@ -791,7 +791,7 @@ paths:
                 employeeId:
                   type: integer
                   example: 1
-                timeOut:
+                timeStamp:
                   type: string
                   format: date-time
                   example: "2024-09-15T18:00:00Z"
@@ -819,7 +819,7 @@ paths:
                 employeeId:
                   type: integer
                   example: 1
-                lunchTimeIn:
+                timeStamp:
                   type: string
                   format: date-time
                   example: "2024-09-15T12:00:00Z"
@@ -847,7 +847,7 @@ paths:
                 employeeId:
                   type: integer
                   example: 1
-                lunchTimeOut:
+                timeStamp:
                   type: string
                   format: date-time
                   example: "2024-09-15T12:30:00Z"
@@ -858,6 +858,27 @@ paths:
           description: Invalid input or lunch not started yet.
         "404":
           description: Employee not found or attendance record missing.
+  /api/attendance/today/:id:
+    get:
+      summary: Get today's attendance record by employee ID
+      tags:
+        - Attendance
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Employee ID
+      responses:
+        "200":
+          description: Attendance records found for the employee
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Attendance"
+        "404":
+          description: No attendance records found for this employee
 
 # END OF ROUTES
 components:
