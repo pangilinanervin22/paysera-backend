@@ -27,7 +27,7 @@ const adminMiddleware = async (req: Request, res: Response, next: NextFunction) 
         if (employee.accessLevel !== 'ADMIN') {
             return res.status(403).send('Access forbidden');
         }
-        req.body.data = employee;
+        req.body.info = employee;
 
         next();
     } catch (err: any) {
