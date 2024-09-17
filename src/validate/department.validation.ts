@@ -49,8 +49,8 @@ function validateDepartmentAssignEmployee(data: any) {
 
 function validateDepartmentRemoveEmployee(data: any) {
     const departmentSchema = z.object({
-        username: z.string(),
         departmentId: z.number(),
+        employeeId: z.number(),
     });
 
     departmentSchema.parse(data);

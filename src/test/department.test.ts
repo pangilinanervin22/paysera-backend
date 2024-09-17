@@ -158,7 +158,7 @@ describe('Department Routes Test', () => {
                 .delete(`/api/department/${curEmployee.departmentId}/employee`)
                 .send({
                     departmentId: curEmployee.departmentId,
-                    username: curEmployee.username,
+                    employeeId: curEmployee.id,
                 }).expect(200);
 
             const employeeResponse = await request(server).get(`/api/employee/${curEmployee.id}`).expect(200);
