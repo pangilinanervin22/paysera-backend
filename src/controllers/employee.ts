@@ -17,6 +17,9 @@ async function getAllEmployees(req: Request, res: Response) {
             departmentId: true,
             role: true,
         },
+        orderBy: {
+            updatedAt: "desc",
+        },
     });
 
     res.status(200).send(allEmployees);
@@ -178,6 +181,10 @@ const updateEmployee = async (req: Request, res: Response) => {
 
 const deleteEmployeeById = async (req: Request, res: Response) => {
     const employeeId = Number(req.params.id) || -1;
+
+    if (req.body.info && req.body.info.id === employeeId) {
+        return customThrowError(400, "You can't delete yourself");
+    }
 
     const existingEmployee = await prisma.employee.findUnique({
         where: { id: employeeId },
