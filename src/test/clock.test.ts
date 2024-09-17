@@ -27,10 +27,10 @@ describe('Attendance Routes', () => {
         const fixedSchedule = await prisma.schedule.create({
             data: {
                 scheduleType: 'FIXED',
-                startTime: new Date(2024, 8, 15, 8, 0, 0),  // 8:00 AM
-                endTime: new Date(2024, 8, 15, 17, 0, 0),   // 5:00 PM
-                lunchStartTime: new Date(2024, 8, 15, 12, 0, 0),   // 12:00 PM
-                lunchEndTime: new Date(2024, 8, 15, 13, 0, 0),   // 1:00 PM
+                startTime: new Date(2020, 8, 15, 8, 0, 0),  // 8:00 AM
+                endTime: new Date(2021, 8, 15, 17, 0, 0),   // 5:00 PM
+                lunchStartTime: new Date(2020, 8, 15, 12, 0, 0),   // 12:00 PM
+                lunchEndTime: new Date(2021, 8, 15, 13, 0, 0),   // 1:00 PM
                 limitWorkHoursDay: 9,
                 allowedOvertime: false,
                 DepartmentSchedule: {
@@ -62,7 +62,7 @@ describe('Attendance Routes', () => {
 
     describe('POST /api/attendance/time-in', () => {
         it('should record time in successfully', async () => {
-            timeIn = new Date(2024, 8, 15, 8, 1, 0);
+            timeIn = new Date(2024, 8, 15, 8, 0, 0);
 
             console.log(timeIn, "timeIn");
 
@@ -76,28 +76,28 @@ describe('Attendance Routes', () => {
                 .post('/api/attendance/time-in')
                 .send({
                     employeeId,
-                    timeIn: timeIn,
+                    timeStamp: timeIn,
                 });
 
             const attendance = await prisma.attendance.findFirst({
                 where: { employeeId },
             });
 
-
-
-            expect(res.status).toBe(201);
+            expect(res.status).toBe(200);
             expect(attendance?.date).toBe(formatDate(timeIn, 'MMMM d, yyyy'));
+            // compare hours and minutes only using date-fns
+            expect(formatDate(attendance?.timeIn!, 'hh:mm a')).toBe(formatDate(timeIn, 'hh:mm a'));
         });
 
-        it('should return 400 because already time-in', async () => {
+        it('should return 200 because already time-in', async () => {
             const res = await request(app)
                 .post('/api/attendance/time-in')
                 .send({
                     employeeId,
-                    timeIn: timeIn,
+                    timeStamp: timeIn,
                 });
 
-            expect(res.status).toBe(400);
+            expect(res.status).toBe(200);
         });
 
         it('should return 400 if timeIn is missing', async () => {
@@ -119,7 +119,7 @@ describe('Attendance Routes', () => {
                 .post('/api/attendance/lunch-in')
                 .send({
                     employeeId,
-                    lunchTimeIn: lunchTimeIn,
+                    timeStamp: lunchTimeIn,
                 }).expect(200);
 
             const attendance = await prisma.attendance.findFirst({
@@ -160,7 +160,7 @@ describe('Attendance Routes', () => {
                 .post('/api/attendance/lunch-out')
                 .send({
                     employeeId,
-                    lunchTimeOut: lunchTimeOut,
+                    timeStamp: lunchTimeOut,
                 }).expect(200);
 
             const attendance = await prisma.attendance.findFirst({
@@ -174,7 +174,7 @@ describe('Attendance Routes', () => {
                 .post('/api/attendance/lunch-out')
                 .send({
                     employeeId,
-                    lunchTimeOut: lunchTimeOut,
+                    timeStamp: lunchTimeOut,
                 });
 
             expect(res.status).toBe(400);
@@ -199,7 +199,7 @@ describe('Attendance Routes', () => {
                 .post('/api/attendance/time-out')
                 .send({
                     employeeId,
-                    timeOut: timeOut,
+                    timeStamp: timeOut,
                 }).expect(200);
 
             const attendance = await prisma.attendance.findFirst({
@@ -208,6 +208,9 @@ describe('Attendance Routes', () => {
                     date: formatDate(timeIn, 'MMMM d, yyyy')
                 },
             });
+
+            console.log(attendance, "attendance done");
+
 
             expect(attendance?.status).toBe('DONE');
             expect(attendance?.date).toBe(formatDate(timeOut, 'MMMM d, yyyy'));

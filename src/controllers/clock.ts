@@ -1,4 +1,4 @@
-import { differenceInHours, differenceInMinutes, format, isAfter, isBefore, set } from 'date-fns';
+import { differenceInHours, differenceInMinutes, format, getHours, getMinutes, isAfter, isBefore, set } from 'date-fns';
 import { Request, Response } from 'express';
 import { prisma } from '../config/database';
 import { customThrowError } from '../middlewares/errorHandler';
@@ -9,7 +9,7 @@ import { formatDate } from '../utils/time';
 async function timeIn(req: Request, res: Response) {
     const body = {
         employeeId: req.body.employeeId,
-        timeIn: new Date(req.body.timeIn),
+        timeIn: new Date(req.body.timeStamp),
     };
 
     // Validate input
@@ -54,25 +54,52 @@ async function timeIn(req: Request, res: Response) {
     });
 
     if (currentAttendance) {
-        return customThrowError(400, 'Employee is already clocked in today');
-    }
+        // Update the existing attendance record
+        await prisma.attendance.update({
+            where: { id: currentAttendance.id },
+            data: {
+                timeIn: currentAttendance.timeIn,
+                status: 'ONGOING',
+                timeOut: null,
+                timeHoursWorked: null,
+                overTimeTotal: null,
+                timeTotal: null,
+                lunchTimeIn: null,
+                lunchTimeOut: null,
+                lunchTimeTotal: null,
+            },
+        });
+    } else {
+        let effectiveTimeIn = body.timeIn;
 
-    let effectiveTimeIn = body.timeIn;
-    // Adjust timeIn if it's earlier than the scheduled time
-    if (schedule.scheduleType === 'FIXED' && body.timeIn < schedule.startTime) {
-        effectiveTimeIn = schedule.startTime;
-    }
+        // Extract hour and minute from the employee's time in
+        const timeInHour = getHours(body.timeIn);
+        const timeInMinute = getMinutes(body.timeIn);
 
-    // Create the attendance record with the formatted date
-    await prisma.attendance.create({
-        data: {
-            employeeId: body.employeeId,
-            date: formatDate(body.timeIn),
-            status: 'ONGOING',
-            scheduleType: schedule.scheduleType,
-            timeIn: effectiveTimeIn,
-        },
-    });
+        // Schedule start time with only hour and minute
+        const scheduledStartTime = set(new Date(), {
+            hours: getHours(schedule.startTime),
+            minutes: getMinutes(schedule.startTime),
+            seconds: 0,
+            milliseconds: 0,
+        });
+
+        // Compare only time (ignoring the exact date)
+        if (schedule.scheduleType === 'FIXED' && isBefore(body.timeIn, scheduledStartTime)) {
+            effectiveTimeIn = scheduledStartTime;
+        }
+
+        // Create a new attendance record with the formatted date
+        await prisma.attendance.create({
+            data: {
+                employeeId: body.employeeId,
+                date: format(body.timeIn, 'MMMM d, yyyy'), // Format date for the record
+                status: 'ONGOING',
+                scheduleType: schedule.scheduleType,
+                timeIn: effectiveTimeIn,
+            },
+        });
+    }
 
     // Update the employee's active status
     await prisma.employee.update({
@@ -80,14 +107,14 @@ async function timeIn(req: Request, res: Response) {
         data: { isActive: true },
     });
 
-    res.status(201).send("Attendance record created successfully");
+    res.status(200).send("Attendance record successfully created");
 }
 
 // POST /api/attendance/time-out
 async function timeOut(req: Request, res: Response) {
     const body = {
         employeeId: req.body.employeeId,
-        timeOut: new Date(req.body.timeOut),
+        timeOut: new Date(req.body.timeStamp),
     };
 
     if (isNaN(body.timeOut.getTime())) {
@@ -133,59 +160,46 @@ async function timeOut(req: Request, res: Response) {
         },
     });
 
-    if (!currentAttendance || currentAttendance.timeOut) {
+    if (!currentAttendance) {
         return customThrowError(400, 'Attendance record not found or already clocked out');
     }
 
-    // Adjust to only compare time part of the day
     const timeIn = new Date(currentAttendance.timeIn);
 
-    // Reset the schedule end time to match the correct day
-    const scheduleEndTime = set(new Date(schedule.endTime), {
-        date: timeIn.getDate(),
-    });
+    // Use only time components for calculations
+    const timeInFixed = set(new Date(), { hours: getHours(timeIn), minutes: getMinutes(timeIn), seconds: 0, milliseconds: 0 });
+    const timeOutFixed = set(new Date(), { hours: getHours(body.timeOut), minutes: getMinutes(body.timeOut), seconds: 0, milliseconds: 0 });
 
-    // Calculate total worked hours in minutes
-    let totalMinutesWorked = differenceInMinutes(body.timeOut, timeIn);
-    let totalTime;
-    totalTime = differenceInMinutes(body.timeOut, timeIn);
-    totalTime = totalTime / 60; // Convert minutes to hours
+    // Calculate total minutes worked
+    const totalMinutesWorked = differenceInMinutes(timeOutFixed, timeInFixed);
 
     // Subtract lunch time from total working hours
+    let totalMinutesAfterLunch = totalMinutesWorked;
     if (currentAttendance.lunchTimeTotal) {
-        totalMinutesWorked -= currentAttendance.lunchTimeTotal * 60; // Convert lunchTimeTotal to minutes
+        totalMinutesAfterLunch -= currentAttendance.lunchTimeTotal * 60; // Convert lunchTimeTotal to minutes
     }
 
-    let totalHoursWorked = totalMinutesWorked / 60;
+    const totalHoursWorked = totalMinutesAfterLunch / 60;
 
-    // Initialize overtime to 0
+    // Reset the schedule end time to only compare the time (hour and minute)
+    const scheduleEndTime = set(new Date(), {
+        hours: getHours(schedule.endTime),
+        minutes: getMinutes(schedule.endTime),
+        seconds: 0,
+        milliseconds: 0,
+    });
+
     let overtimeTotal = 0;
 
     // Fixed schedule: Adjust total hours and prevent overtime if not allowed
     if (schedule.scheduleType === 'FIXED') {
-        // Check if the timeOut exceeds the schedule end time
-        if (isAfter(body.timeOut, scheduleEndTime)) {
+        if (isAfter(timeOutFixed, scheduleEndTime)) {
             if (schedule.allowedOvertime) {
-                // Calculate overtime if allowed
-                const overtimeMinutes = differenceInMinutes(body.timeOut, scheduleEndTime);
-                overtimeTotal = overtimeMinutes / 60; // Convert minutes to hours
+                const overtimeMinutes = differenceInMinutes(timeOutFixed, scheduleEndTime);
+                overtimeTotal = overtimeMinutes / 60;
             } else {
-                // If overtime is not allowed, set timeOut to the schedule end time
                 body.timeOut = scheduleEndTime;
-                totalHoursWorked = differenceInMinutes(body.timeOut, timeIn) - ((currentAttendance.lunchTimeTotal || 0) * 60);
-                totalHoursWorked = totalHoursWorked / 60;
             }
-        } else {
-            totalHoursWorked = differenceInMinutes(body.timeOut, timeIn) - ((currentAttendance.lunchTimeTotal || 0) * 60);
-            totalHoursWorked = totalHoursWorked / 60;
-        }
-    }
-
-    // For flexi and super flexi schedules, we just calculate overtime if applicable
-    if (schedule.scheduleType === 'SUPER_FLEXI' || schedule.scheduleType === 'FLEXI') {
-        if (isAfter(body.timeOut, scheduleEndTime)) {
-            const overtimeMinutes = differenceInMinutes(body.timeOut, scheduleEndTime);
-            overtimeTotal = overtimeMinutes / 60; // Convert minutes to hours
         }
     }
 
@@ -196,23 +210,28 @@ async function timeOut(req: Request, res: Response) {
             timeOut: body.timeOut,
             timeHoursWorked: totalHoursWorked,  // Regular hours worked
             overTimeTotal: overtimeTotal,       // Overtime worked (if any)
-            timeTotal: totalTime,               // Total hours worked
+            timeTotal: totalMinutesWorked / 60,      // Total time worked before lunch deduction
             status: 'DONE',
         },
+    });
+
+    // Update the employee's active status
+    await prisma.employee.update({
+        where: { id: body.employeeId },
+        data: { isActive: false },
     });
 
     res.status(200).send('Attendance updated');
 }
 
-
 // POST /api/attendance/lunch-in
 async function lunchIn(req: Request, res: Response) {
     const body = {
         employeeId: req.body.employeeId,
-        lunchTimeIn: new Date(req.body.lunchTimeIn),
+        lunchTimeIn: new Date(req.body.timeStamp),
     };
 
-    if (isNaN(body.lunchTimeIn.getTime())) {
+    if (body.lunchTimeIn.toString() === 'Invalid Date') {
         return customThrowError(400, 'Invalid lunch time in');
     }
 
@@ -236,7 +255,7 @@ async function lunchIn(req: Request, res: Response) {
     const currentAttendance = await prisma.attendance.findFirst({
         where: {
             employeeId: body.employeeId,
-            date: format(body.lunchTimeIn, 'MMMM d, yyyy'),
+            date: format(body.lunchTimeIn, 'MMMM d, yyyy'), // format date for comparison
         },
     });
 
@@ -260,11 +279,33 @@ async function lunchIn(req: Request, res: Response) {
         return customThrowError(400, 'Employee schedule not found');
     }
 
-    // validate if scheduled of lunch time in is valid
+    // Use date-fns to compare only hours and minutes
+    const lunchStartTime = set(new Date(), {
+        hours: getHours(schedule.lunchStartTime!),
+        minutes: getMinutes(schedule.lunchStartTime!),
+        seconds: 0,
+        milliseconds: 0,
+    });
+
+    const lunchEndTime = set(new Date(), {
+        hours: getHours(schedule.lunchEndTime!),
+        minutes: getMinutes(schedule.lunchEndTime!),
+        seconds: 0,
+        milliseconds: 0,
+    });
+
+    const lunchTimeIn = set(new Date(), {
+        hours: getHours(body.lunchTimeIn),
+        minutes: getMinutes(body.lunchTimeIn),
+        seconds: 0,
+        milliseconds: 0,
+    });
+
+    // Validate if lunch time in is within the scheduled time
     if (schedule.scheduleType === 'FIXED') {
-        if (isBefore(body.lunchTimeIn, schedule.lunchStartTime!)) {
+        if (getHours(lunchTimeIn) < getHours(lunchStartTime)) {
             return customThrowError(400, 'Lunch time in is too early');
-        } else if (isAfter(body.lunchTimeIn, schedule.lunchEndTime!)) {
+        } else if (getHours(lunchTimeIn) > getHours(lunchEndTime)) {
             return customThrowError(400, 'Lunch time in is too late');
         }
     }
@@ -274,6 +315,7 @@ async function lunchIn(req: Request, res: Response) {
         where: { id: currentAttendance.id },
         data: {
             lunchTimeIn: body.lunchTimeIn,
+            status: 'BREAK',
         },
     });
 
@@ -285,10 +327,10 @@ async function lunchIn(req: Request, res: Response) {
 async function lunchOut(req: Request, res: Response) {
     const body = {
         employeeId: req.body.employeeId,
-        lunchTimeOut: new Date(req.body.lunchTimeOut),
+        lunchTimeOut: new Date(req.body.timeStamp),
     };
 
-    if (isNaN(body.lunchTimeOut.getTime())) {
+    if (body.lunchTimeOut.toString() === 'Invalid Date') {
         return customThrowError(400, 'Invalid lunch time out');
     }
 
@@ -317,12 +359,26 @@ async function lunchOut(req: Request, res: Response) {
     if (!currentAttendance || !currentAttendance.lunchTimeIn) {
         return customThrowError(400, 'Lunch has not been started');
     } else if (currentAttendance.lunchTimeOut) {
-        return customThrowError(400, 'Lunch has already out');
+        return customThrowError(400, 'Lunch has already ended');
     }
 
+    // Use date-fns to compare only hours and minutes for lunch time in and out
+    const lunchTimeIn = set(new Date(), {
+        hours: getHours(currentAttendance.lunchTimeIn),
+        minutes: getMinutes(currentAttendance.lunchTimeIn),
+        seconds: 0,
+        milliseconds: 0,
+    });
+
+    const lunchTimeOut = set(new Date(), {
+        hours: getHours(body.lunchTimeOut),
+        minutes: getMinutes(body.lunchTimeOut),
+        seconds: 0,
+        milliseconds: 0,
+    });
+
     // Calculate the total lunch duration in minutes
-    const lunchTimeIn = new Date(currentAttendance.lunchTimeIn);
-    const totalLunchMinutes = differenceInMinutes(body.lunchTimeOut, lunchTimeIn);
+    const totalLunchMinutes = differenceInMinutes(lunchTimeOut, lunchTimeIn);
     const totalLunchHours = totalLunchMinutes / 60;
 
     // Update attendance record with lunchTimeOut and lunchTimeTotal
@@ -330,11 +386,43 @@ async function lunchOut(req: Request, res: Response) {
         where: { id: currentAttendance.id },
         data: {
             lunchTimeOut: body.lunchTimeOut,
-            lunchTimeTotal: totalLunchHours, // Total lunch break duration
+            lunchTimeTotal: totalLunchHours, // Total lunch break duration in hours
+            status: 'ONGOING',
         },
     });
 
     res.status(200).send('Lunch time out recorded');
 }
 
-export { timeIn, timeOut, lunchIn, lunchOut };
+// GET /api/attendance/today/:id
+async function getAttendanceOfEmployeeToday(req: Request, res: Response) {
+    const employeeId = Number(req.params.id);
+
+    if (!employeeId) {
+        return customThrowError(400, 'Employee ID is required');
+    }
+
+    const employee = await prisma.employee.findUnique({
+        where: { id: employeeId },
+    });
+
+    if (!employee) {
+        return customThrowError(404, 'Employee not found');
+    }
+
+    // Fetch the attendance record of the employee today date
+    const attendance = await prisma.attendance.findFirst({
+        where: {
+            employeeId: employee.id,
+            date: format(new Date(), 'MMMM d, yyyy'),
+        },
+    });
+
+    if (!attendance) {
+        return customThrowError(404, 'Attendance record not found');
+    }
+
+    res.status(200).send(attendance);
+}
+
+export { timeIn, timeOut, lunchIn, lunchOut, getAttendanceOfEmployeeToday };
