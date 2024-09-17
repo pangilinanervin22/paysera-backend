@@ -24,7 +24,7 @@ const teamLeaderMiddleware = async (req: Request, res: Response, next: NextFunct
 
         if (!employee) return res.status(404).send('Team Lead not found');
         if (employee.accessLevel === 'TEAM_LEADER' || employee.accessLevel === 'ADMIN') {
-            req.body.data = employee;
+            req.body.info = employee;
 
             next();
         } else {
