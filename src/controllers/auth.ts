@@ -124,7 +124,7 @@ const getUserInfo = async (req: Request, res: Response) => {
     const token = req.cookies.token;
 
     if (!token) {
-        return customThrowError(401, "Unauthorized");
+        return customThrowError(401, "Unauthorized cookie not found");
     }
 
     try {
