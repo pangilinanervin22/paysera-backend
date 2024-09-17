@@ -55,18 +55,18 @@ async function timeIn(req: Request, res: Response) {
 
     if (currentAttendance) {
         // Update the existing attendance record
+        if (currentAttendance.status === 'BREAK') {
+            return customThrowError(400, 'Time currently on break');
+        }
+
         await prisma.attendance.update({
             where: { id: currentAttendance.id },
             data: {
-                timeIn: currentAttendance.timeIn,
                 status: 'ONGOING',
                 timeOut: null,
-                timeHoursWorked: null,
-                overTimeTotal: null,
-                timeTotal: null,
-                lunchTimeIn: null,
-                lunchTimeOut: null,
-                lunchTimeTotal: null,
+                timeHoursWorked: 0,
+                overTimeTotal: 0,
+                timeTotal: 0,
             },
         });
     } else {
@@ -162,6 +162,12 @@ async function timeOut(req: Request, res: Response) {
 
     if (!currentAttendance) {
         return customThrowError(400, 'Attendance record not found or already clocked out');
+    } else if (currentAttendance.timeOut) {
+        return customThrowError(400, 'Already clocked out');
+    } else if (!currentAttendance.timeIn) {
+        return customThrowError(400, 'Time in is required');
+    } else if (currentAttendance.status === 'BREAK') {
+        return customThrowError(400, 'Time currently on break');
     }
 
     const timeIn = new Date(currentAttendance.timeIn);
@@ -261,11 +267,13 @@ async function lunchIn(req: Request, res: Response) {
 
     if (!currentAttendance) {
         return customThrowError(400, 'Attendance record not found');
-    } else if (currentAttendance.lunchTimeIn) {
-        return customThrowError(400, 'Lunch has already started');
+    } else if (currentAttendance.timeOut) {
+        return customThrowError(400, 'Already clocked out');
+    } else if (currentAttendance.status === 'BREAK') {
+        return customThrowError(400, 'Time currently on break');
     }
 
-    const employeeSchedule = await prisma.departmentSchedule.findFirst({
+    const currentSchedule = await prisma.departmentSchedule.findFirst({
         where: {
             role: employee.role,
             departmentId: employee.departmentId,
@@ -273,7 +281,7 @@ async function lunchIn(req: Request, res: Response) {
         select: { Schedule: true },
     });
 
-    const schedule = employeeSchedule?.Schedule;
+    const schedule = currentSchedule?.Schedule;
 
     if (!schedule) {
         return customThrowError(400, 'Employee schedule not found');
@@ -310,11 +318,16 @@ async function lunchIn(req: Request, res: Response) {
         }
     }
 
+    // if lunch has already started just resume
+    body.lunchTimeIn = currentAttendance.lunchTimeIn || body.lunchTimeIn;
+
     // Update attendance record with lunchTimeIn
     await prisma.attendance.update({
         where: { id: currentAttendance.id },
         data: {
             lunchTimeIn: body.lunchTimeIn,
+            lunchTimeOut: null,
+            lunchTimeTotal: 0,
             status: 'BREAK',
         },
     });
@@ -346,6 +359,8 @@ async function lunchOut(req: Request, res: Response) {
 
     if (!employee) {
         return customThrowError(404, 'Employee not found');
+    } else if (!employee.role || !employee.departmentId) {
+        return customThrowError(400, 'Employee is not assigned to a department');
     }
 
     // Fetch current attendance record
@@ -360,25 +375,56 @@ async function lunchOut(req: Request, res: Response) {
         return customThrowError(400, 'Lunch has not been started');
     } else if (currentAttendance.lunchTimeOut) {
         return customThrowError(400, 'Lunch has already ended');
+    } else if (currentAttendance.timeOut) {
+        return customThrowError(400, 'Already clocked out');
     }
 
-    // Use date-fns to compare only hours and minutes for lunch time in and out
-    const lunchTimeIn = set(new Date(), {
-        hours: getHours(currentAttendance.lunchTimeIn),
-        minutes: getMinutes(currentAttendance.lunchTimeIn),
+    // get current schedule
+    const employeeSchedule = await prisma.departmentSchedule.findFirst({
+        where: {
+            role: employee.role,
+            departmentId: employee.departmentId,
+        },
+        select: { Schedule: true },
+    });
+
+    // validate lunch time out if it is within the scheduled time
+    const schedule = employeeSchedule?.Schedule;
+    if (!schedule) {
+        return customThrowError(400, 'Employee schedule not found');
+    }
+
+    // Use date-fns to compare only hours and minutes for scheduled lunch out
+    const scheduleLunchEndTime = set(new Date(), {
+        hours: getHours(schedule.lunchEndTime!),
+        minutes: getMinutes(schedule.lunchEndTime!),
         seconds: 0,
         milliseconds: 0,
     });
 
-    const lunchTimeOut = set(new Date(), {
+    // Use date-fns to compare only hours and minutes for lunch time out
+    const scheduledLunchTimeout = set(new Date(), {
         hours: getHours(body.lunchTimeOut),
         minutes: getMinutes(body.lunchTimeOut),
         seconds: 0,
         milliseconds: 0,
     });
 
+    // if lunch time out is later than the scheduled time set the lunch time out to the scheduled time
+    if (schedule.scheduleType === 'FIXED' && isAfter(scheduledLunchTimeout, scheduleLunchEndTime)) {
+        body.lunchTimeOut = scheduleLunchEndTime;
+    }
+
+    // Use date-fns to compare only hours and minutes for lunch time in
+    const currentLunchTimeIn = set(new Date(), {
+        hours: getHours(currentAttendance.lunchTimeIn),
+        minutes: getMinutes(currentAttendance.lunchTimeIn),
+        seconds: 0,
+        milliseconds: 0,
+    });
+
     // Calculate the total lunch duration in minutes
-    const totalLunchMinutes = differenceInMinutes(lunchTimeOut, lunchTimeIn);
+    const totalLunchMinutes = differenceInMinutes(scheduledLunchTimeout, currentLunchTimeIn);
     const totalLunchHours = totalLunchMinutes / 60;
 
     // Update attendance record with lunchTimeOut and lunchTimeTotal
