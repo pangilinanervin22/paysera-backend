@@ -26,14 +26,14 @@ const port = configEnv.PORT || 3000;
 // Rate limiting to prevent brute-force attacks
 const limiter = rateLimit({
     windowMs: 1 * 60 * 1000, // 1 minutes
-    max: configEnv.NODE_ENV === "development" ? 500 : 100, // Limit each IP to 100 requests per windowMs
+    max: 100, // Limit each IP to 100 requests per windowMs
 });
 
 // Essential Middleware
 app.use(limiter); // Rate limiting
 app.use(cookieParser()); // Parse cookies
 app.use(cors({
-    origin: configEnv.ORIGIN, // Reflect the request origin
+    origin: [configEnv.ORIGIN], // Reflect the request origin
     credentials: true, // Allow sending cookies
 })); // Enable CORS
 if (configEnv.NODE_ENV === 'development') {
