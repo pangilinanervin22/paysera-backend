@@ -332,7 +332,10 @@ async function getDepartmentAttendanceToday(req: Request, res: Response) {
             createdAt: {
                 gte: new Date(new Date().setHours(0, 0, 0, 0)),
                 lt: new Date(new Date().setHours(23, 59, 59, 999))
-            }
+            },
+        },
+        orderBy: {
+            createdAt: 'desc'
         },
         include: {
             employee: true
@@ -381,15 +384,19 @@ async function updateDepartmentAssignEmployee(req: Request, res: Response) {
 
 async function updateDepartmentRemoveEmployee(req: Request, res: Response) {
     const departmentId = Number(req.params.id);
-    const username = req.body.username;
-    validateDepartmentRemoveEmployee({ departmentId, username });
+    const employeeId = Number(req.body.employeeId);
+    validateDepartmentRemoveEmployee({ departmentId, employeeId });
+
+    if (req.body.info && req.body.info.id === employeeId) {
+        return customThrowError(400, "You can't remove yourself from department");
+    }
 
     const [department, employee] = await Promise.all([
         prisma.department.findUnique({
             where: { id: departmentId }
         }),
         prisma.employee.findUnique({
-            where: { username: username }
+            where: { id: employeeId }
         })
     ]);
 
@@ -411,7 +418,7 @@ async function updateDepartmentRemoveEmployee(req: Request, res: Response) {
         }
     });
 
-    res.status(200).send("Employee removed from department successfully");
+    res.status(200).send("fuck removed from department successfully");
 }
 
 async function updateDepartmentAssignLeader(req: Request, res: Response) {
